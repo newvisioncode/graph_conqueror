@@ -1,6 +1,4 @@
-باشه! این یک نمونه حرفه‌ای از README بر اساس ساختار جدید ریپوت هست:
 
-```markdown
 # Graph Conqueror
 
 Graph Conqueror is a competitive programming platform where teams compete by solving algorithmic problems and capturing nodes in an irregular graph. The game blends strategic area control with problem-solving.
@@ -87,6 +85,3 @@ Graph Conqueror is a competitive programming platform where teams compete by sol
 MIT License - see the [LICENSE](./LICENSE) file for details.
 ```
 
----
-
-می‌تونم همین رو هم برات مستقیم به ریپو push کنم اگه بخوای! یا شخصی‌سازی بیشتری لازم داری مثل اضافه کردن لوگو یا دستورالعمل دیپلوی؟ 😎
