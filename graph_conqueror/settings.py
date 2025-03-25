@@ -116,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-3
+
 AUTH_USER_MODEL = 'user.User'
 
 # Internationalization
