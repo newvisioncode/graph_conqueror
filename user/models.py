@@ -1,3 +1,11 @@
+import uuid
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 
-# Create your models here.
+
+class User(AbstractUser):
+    email = models.EmailField("email", blank=True, unique=True)
+    phone_number = models.CharField("phone_number", max_length=11, blank=False, unique=True,
+                                    validators=[RegexValidator(r"^09\d{9}$")])
+    payment_identifier = models.UUIDField(unique=True, editable=False, default=uuid.uuid4)
