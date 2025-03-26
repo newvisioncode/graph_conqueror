@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'user',
     'castle_graph',
     'question',
+    'django_quill',
 ]
 
 REST_FRAMEWORK = {
