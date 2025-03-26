@@ -11,3 +11,8 @@ class ContestGroup(models.Model):
 class ContestUser(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(ContestGroup, on_delete=models.CASCADE)
+
+
+class Payment(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    success = models.BooleanField(default=False)
