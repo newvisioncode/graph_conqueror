@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'user',
     'castle_graph',
+    'question',
 ]
 
 REST_FRAMEWORK = {
