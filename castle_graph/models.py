@@ -1,3 +1,13 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 
-# Create your models here.
+User = get_user_model()
+
+
+class ContestGroup(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+
+class ContestUser(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(ContestGroup, on_delete=models.CASCADE)
