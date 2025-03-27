@@ -1,6 +1,7 @@
 from django.contrib import admin
 
-from castle_graph.models import Submission, Castle, CaptureCastle, SubmissionItem, ContestUser, ContestGroup
+from castle_graph.models import Submission, Castle, CaptureCastle, SubmissionItem, ContestUser, ContestGroup, Invite, \
+    Payment
 
 # Register your models here.
 admin.site.register(Submission)
@@ -9,3 +10,5 @@ admin.site.register(SubmissionItem)
 admin.site.register(CaptureCastle)
 admin.site.register(ContestUser)
 admin.site.register(ContestGroup)
+admin.site.register(Invite)
+admin.site.register(Payment)
