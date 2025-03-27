@@ -5,6 +5,6 @@ from django.db import models
 
 
 class User(AbstractUser):
-    email = models.EmailField("email", blank=True, unique=True)
+    email = models.EmailField("email", blank=False, null=False, unique=True)
     phone_number = models.CharField("phone_number", max_length=11, blank=False, unique=True,
                                     validators=[RegexValidator(r"^09\d{9}$")])
