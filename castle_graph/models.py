@@ -1,3 +1,4 @@
+import uuid
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
@@ -8,12 +9,14 @@ User = get_user_model()
 
 
 class ContestGroup(models.Model):
+    lead_user = models.OneToOneField('castle_graph.ContestUser', on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=100, unique=True)
 
 
 class ContestUser(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     group = models.ForeignKey(ContestGroup, on_delete=models.CASCADE)
+    payment_identifier = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
 
 class Castle(models.Model):
@@ -26,7 +29,7 @@ class Castle(models.Model):
 class Submission(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     group = models.ForeignKey(ContestGroup, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(ContestUser, on_delete=models.CASCADE)
     castle = models.ForeignKey(Castle, on_delete=models.CASCADE)
 
 
