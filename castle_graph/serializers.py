@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers, exceptions
 from rest_framework.validators import UniqueValidator
-from castle_graph.models import Invite, ContestUser
+from castle_graph.models import Invite, ContestUser, ContestGroup
 from user.models import User
 
 
@@ -93,3 +93,17 @@ class RegisterContestUserSerializer(serializers.ModelSerializer):
             contest_user = ContestUser.objects.create(user=user)
 
         return user, contest_user
+
+
+class ContestGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContestGroup
+        exclude = ('lead_user',)
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            group = ContestGroup.objects.create(**validated_data, lead_user=self.context.get('user'))
+            self.context.get('user').group = group
+            self.context.get('user').save()
+
+        return group

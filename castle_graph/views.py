@@ -1,6 +1,7 @@
 from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.core.mail import EmailMessage
@@ -9,7 +10,7 @@ from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Invite, ContestUser
 from .permissions import IsAuthenticatedContest
-from .serializers import InviteSerializer, RegisterContestUserSerializer
+from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer
 from django.contrib.sites.shortcuts import get_current_site
 
 
@@ -98,3 +99,17 @@ class AuthViewSet(ViewSet):
             'access': str(refresh.access_token),
             'payment_id': contest_user.payment_identifier
         }, status=status.HTTP_201_CREATED)
+
+
+class GroupViewSet(ViewSet):
+    http_method_names = ['post']
+    permission_classes = (IsAuthenticatedContest,)
+
+    def create(self, request, *args, **kwargs):
+        if request.user.contestuser.group is not None:
+            raise ValidationError("you already in group. you cannot create a group.")
+
+        serializer = ContestGroupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_201_CREATED)
