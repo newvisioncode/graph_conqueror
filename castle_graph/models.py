@@ -78,3 +78,23 @@ class CaptureCastle(models.Model):
     submission = models.OneToOneField(Submission, on_delete=models.CASCADE, blank=True, null=True)
     cause = models.IntegerField(blank=False, null=False, choices=CaptureCause.choices, default=CaptureCause.SOLVED)
     created = models.DateTimeField(auto_now_add=True)
+
+
+class Payment(models.Model):
+    user = models.ForeignKey(ContestUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    tracking_code = models.CharField(max_length=64, blank=False, null=False)
+    success = models.BooleanField(default=False)
+
+
+class Invite(models.Model):
+    class InviteStatus(models.IntegerChoices):
+        PENDING = 0, _("pending")
+        REJECTED = 1, _("rejected")
+        ACCEPTED = 2, _("accepted")
+
+    group = models.ForeignKey(ContestGroup, on_delete=models.CASCADE)
+    invited_user = models.ForeignKey(ContestUser, on_delete=models.CASCADE)
+    uuid = models.UUIDField(auto_created=True, default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.IntegerField(blank=False, null=False, choices=InviteStatus.choices, default=InviteStatus.PENDING)
