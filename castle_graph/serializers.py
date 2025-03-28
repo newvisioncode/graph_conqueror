@@ -1,6 +1,9 @@
+from django.contrib.auth.password_validation import validate_password
+from django.db import transaction
 from rest_framework import serializers, exceptions
-
+from rest_framework.validators import UniqueValidator
 from castle_graph.models import Invite, ContestUser
+from user.models import User
 
 
 class InviteSerializer(serializers.ModelSerializer):
@@ -42,3 +45,51 @@ class InviteSerializer(serializers.ModelSerializer):
         data['invited_user'] = user
 
         return data
+
+
+class RegisterContestUserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        required=True,
+        allow_blank=False,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    phone_number = serializers.CharField(
+        required=True,
+        allow_null=True,
+        max_length=11,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+
+    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ('phone_number', 'password', 'password2', 'email', 'first_name', 'last_name')
+        extra_kwargs = {
+            'first_name': {'required': False},
+            'last_name': {'required': False}
+        }
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+
+        return attrs
+
+    def create(self, validated_data):
+        user = User(
+            phone_number=validated_data['phone_number'],
+            email=validated_data['email'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            is_active=True
+        )
+
+        user.set_password(validated_data['password'])
+
+        with transaction.atomic():
+            user.save()
+            contest_user = ContestUser.objects.create(user=user)
+
+        return user, contest_user

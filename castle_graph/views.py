@@ -5,9 +5,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.core.mail import EmailMessage
 from rest_framework.viewsets import ViewSet
+from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Invite, ContestUser
 from .permissions import IsAuthenticatedContest
-from .serializers import InviteSerializer
+from .serializers import InviteSerializer, RegisterContestUserSerializer
 from django.contrib.sites.shortcuts import get_current_site
 
 
@@ -71,3 +73,28 @@ class InviteView(ViewSet):
         email = EmailMessage(mail_subject, message, to=[invite.group.lead_user.user.email])
         email.send()
         return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class AuthViewSet(ViewSet):
+    http_method_names = ['post']
+
+    def get_authenticate_header(self, request):
+        if self.action == 'refresh':
+            return '{} realm="{}"'.format(
+                AUTH_HEADER_TYPES[0],
+                'api',
+            )
+        return super().get_authenticate_header(request)
+
+    @action(methods=['POST'], detail=False, permission_classes=[AllowAny])
+    def register(self, request):
+        user_serializer = RegisterContestUserSerializer(data=request.data)
+        user_serializer.is_valid(raise_exception=True)
+        user, contest_user = user_serializer.save()
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'payment_id': contest_user.payment_identifier
+        }, status=status.HTTP_201_CREATED)
