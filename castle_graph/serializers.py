@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers, exceptions
 from rest_framework.validators import UniqueValidator
-from castle_graph.models import Invite, ContestUser, ContestGroup
+from castle_graph.models import Invite, ContestUser, ContestGroup, Submission, CaptureCastle
 from user.models import User
 
 
@@ -107,3 +107,27 @@ class ContestGroupSerializer(serializers.ModelSerializer):
             self.context.get('user').save()
 
         return group
+
+
+class SubmissionSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    group = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = '__all__'
+
+    def get_user(self, obj):
+        return self.context['contest_user']
+
+    def get_group(self, obj):
+        return self.context['group']
+
+    def create(self, validated_data):
+        return Submission.objects.create(**validated_data, user=self.context['contest_user'],
+                                         group=self.context['group'])
+
+    def validate(self, attrs):
+        if CaptureCastle.objects.filter(castle_id=attrs['castle']).exists():
+            raise serializers.ValidationError('Castle Conqueror')
+        return attrs

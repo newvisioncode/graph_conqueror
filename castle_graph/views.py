@@ -1,4 +1,8 @@
+import threading
+import requests
+from django.conf import settings
 from django.db import transaction
+from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -8,9 +12,9 @@ from django.core.mail import EmailMessage
 from rest_framework.viewsets import ViewSet
 from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Invite, ContestUser
-from .permissions import IsAuthenticatedContest
-from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer
+from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Submission
+from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
+from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer
 from django.contrib.sites.shortcuts import get_current_site
 
 
@@ -113,3 +117,93 @@ class GroupViewSet(ViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(status=status.HTTP_201_CREATED)
+
+
+JUDGE0_HOST = settings.JUDGE0_HOST
+JUDGE0_KEY = settings.JUDGE0_KEY
+
+
+class SubmissionView(ViewSet):
+    http_method_names = ['post', 'put']
+
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [ConfirmJudge0SubmissionPermission()]
+        return [IsAuthenticatedContest()]
+
+    @classmethod
+    def __captured_check(cls, castle, group_id):
+        for neighbor in castle.neighbors:
+            target_castle = Castle.objects.get(identifier=neighbor)
+            captured_neighbors_count = CaptureCastle.objects.filter(
+                castle__in=target_castle.neighbors,
+                group_id=group_id
+            ).count()
+
+            if captured_neighbors_count == len(target_castle.neighbors):
+                captured_castle = CaptureCastle.objects.filter(castle=target_castle, is_valid=True).first()
+                if captured_castle:
+                    captured_castle.is_valid = False
+                    captured_castle.save()
+                CaptureCastle.objects.create(castle=target_castle, group_id=group_id, submission=None,
+                                             cause=CaptureCastle.CaptureCause.CONQUERED)
+
+    @classmethod
+    def __solved_check(cls, submission):
+        is_solved = not SubmissionItem.objects.filter(
+            submission=submission
+        ).exclude(result=SubmissionItem.SubmissionResult.ACCEPTED).exists()
+        if is_solved:
+            castle = submission.castle
+            CaptureCastle.objects.create(castle=castle, submission=submission,
+                                         group_id=submission.group_id)
+            cls.__captured_check(castle, submission.group_id)
+
+    @staticmethod
+    def __judge0_submit(request, code, language_id, question_item, submission_id):
+        url = request.build_absolute_uri(reverse('castle_graph:submission-result'))
+        print(url)
+        response = requests.post(f"{JUDGE0_HOST}/submissions/",
+                                 data={"source_code": code, 'language_id': language_id,
+                                       "stdin": question_item.input, 'expected_output': question_item.output,
+                                       'callback_url': f"{url}?token={JUDGE0_KEY}"})
+
+        res = response.json()
+
+        if response.status_code != 201 or not res.get('token', None) or res['token'] == '':
+            SubmissionItem.objects.create(submission_id=submission_id, question_item=question_item,
+                                          token=res.get('token', None),
+                                          result=res.get('status', dict()).get('id',
+                                                                               SubmissionItem.SubmissionResult.UNKNOWN_ERROR))
+
+        SubmissionItem.objects.create(submission_id=submission_id, question_item=question_item,
+                                      token=res['token'])
+
+    def create(self, request, *args, **kwargs):
+        user = request.user.contestuser
+        group = user.group
+        submission_serializer = SubmissionSerializer(data=request.data,
+                                                     context={'request': request, 'group': group, 'contest_user': user})
+        submission_serializer.is_valid(raise_exception=True)
+        submission = submission_serializer.save()
+        question = submission.castle.question
+        code = submission.source_code.read()
+        for question_item in question.questionitem_set.all():
+            thread = threading.Thread(target=self.__judge0_submit,
+                                      args=(
+                                          request, code, submission.language.judge0_code, question_item, submission.id))
+            thread.start()
+
+        return Response(status=status.HTTP_201_CREATED)
+
+    @action(methods=['put'], detail=False, url_path='result', url_name='result')
+    def submit_result(self, request, *args, **kwargs):
+        submission_item = SubmissionItem.objects.filter(token=request.data['token']).first()
+        if not submission_item:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        submission_item.result = request.data['status']['id']
+        submission_item.runtime = request.data['time']
+        submission_item.save()
+        if request.data['status']['id'] == SubmissionItem.SubmissionResult.ACCEPTED:
+            self.__solved_check(submission_item.submission)
+        return Response(status=status.HTTP_200_OK)

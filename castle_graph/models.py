@@ -78,6 +78,7 @@ class CaptureCastle(models.Model):
     submission = models.OneToOneField(Submission, on_delete=models.CASCADE, blank=True, null=True)
     cause = models.IntegerField(blank=False, null=False, choices=CaptureCause.choices, default=CaptureCause.SOLVED)
     created = models.DateTimeField(auto_now_add=True)
+    is_valid = models.BooleanField(default=True)
 
 
 class Payment(models.Model):
