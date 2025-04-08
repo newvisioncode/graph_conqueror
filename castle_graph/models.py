@@ -99,3 +99,8 @@ class Invite(models.Model):
     uuid = models.UUIDField(auto_created=True, default=uuid.uuid4, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.IntegerField(blank=False, null=False, choices=InviteStatus.choices, default=InviteStatus.PENDING)
+
+class Gif(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    confirmed = models.BooleanField(default=False)
+    gif = models.FileField(upload_to="gifs")
