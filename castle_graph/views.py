@@ -2,20 +2,23 @@ import threading
 import requests
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from graph_conqueror.pagination import PageNumberPagination
 from django.core.mail import EmailMessage
-from rest_framework.viewsets import ViewSet
+from rest_framework.viewsets import ViewSet, GenericViewSet
 from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Submission
+from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Submission, Gif
 from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
-from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer
+from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, GifSerializer
 from django.contrib.sites.shortcuts import get_current_site
+from django.shortcuts import get_object_or_404
 
 
 class InviteView(ViewSet):
@@ -207,3 +210,44 @@ class SubmissionView(ViewSet):
         if request.data['status']['id'] == SubmissionItem.SubmissionResult.ACCEPTED:
             self.__solved_check(submission_item.submission)
         return Response(status=status.HTTP_200_OK)
+
+class GifViewSet(GenericViewSet):
+    http_method_names = ['post', 'get', 'patch']
+    permission_classes = (IsAuthenticatedContest,)
+    serializer_class = GifSerializer
+    pagination_class = PageNumberPagination
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def list(self, request, *args, **kwargs):
+        queryset = Gif.objects.filter(Q(confirmed=True) | Q(user=request.user)).order_by("-id")
+
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        return Response(paginator.get_paginated_response(serializer.data).data)
+
+    @action(methods=['get'], detail=False, url_path="requests", permission_classes=[IsAdminUser])
+    def gif_requests(self, request, *args, **kwargs):
+        queryset = Gif.objects.all().order_by("-id")
+
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        return Response(paginator.get_paginated_response(serializer.data).data)
+
+    @action(methods=['patch'], detail=True, url_path="confirm", permission_classes=[IsAdminUser])
+    def confirm_gif_request(self, request, *args, **kwargs):
+        instance = get_object_or_404(Gif, id=kwargs["pk"])
+        instance.confirmed = True
+        instance.save()
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)

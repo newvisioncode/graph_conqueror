@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers, exceptions
 from rest_framework.validators import UniqueValidator
-from castle_graph.models import Invite, ContestUser, ContestGroup, Submission, CaptureCastle
+from castle_graph.models import Invite, ContestUser, ContestGroup, Submission, CaptureCastle, Gif
 from user.models import User
 
 
@@ -131,3 +131,13 @@ class SubmissionSerializer(serializers.ModelSerializer):
         if CaptureCastle.objects.filter(castle_id=attrs['castle']).exists():
             raise serializers.ValidationError('Castle Conqueror')
         return attrs
+
+class GifSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Gif
+        fields = "__all__"
+        read_only_fields = ["user", "confirmed"]
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        return super().create(validated_data)
