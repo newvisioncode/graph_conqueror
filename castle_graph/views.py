@@ -255,11 +255,15 @@ class GifViewSet(GenericViewSet):
 
 class LeaderBoardApiView(APIView):
     def get(self, request, *args, **kwargs):
-        leaderboard = (
+        queryset = (
             CaptureCastle.objects.filter(is_valid=True)
             .values("group__id", "group__name")
             .annotate(score=Sum("castle__score"))
             .order_by("-score")
         )
-        serializer = LeaderboardSerializer(leaderboard, many=True)
-        return Response(serializer.data)
+
+        paginator = PageNumberPagination()
+        paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+
+        serializer = LeaderboardSerializer(paginated_queryset, many=True)
+        return Response(paginator.get_paginated_response(serializer.data).data)
