@@ -18,10 +18,10 @@ from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from graph_conqueror.pagination import PageNumberPagination
-from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Gif
+from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Gif, Submission
 from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
 from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, \
-    GifSerializer, CastleSerializer
+    GifSerializer, CastleSerializer, SubmissionListSerializer, SubmissionItemSerializer
 
 
 class InviteView(ViewSet):
@@ -258,11 +258,52 @@ class GifViewSet(GenericViewSet):
 
 
 class CastleView(GenericViewSet):
-    http_method_names = ['post', 'get', 'patch']
+    http_method_names = ['get']
     serializer_class = CastleSerializer
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticatedContest,)
     queryset = Castle.objects.all().order_by("-id")
 
     def list(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data)
+
+
+class SubmissionListView(GenericViewSet):
+    http_method_names = ['get']
+    permission_classes = (IsAuthenticatedContest,)
+    serializer_class = SubmissionListSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        print(Submission.objects.filter().prefetch_related(
+            'castle',
+            'castle__question',
+        ).order_by("created").first().group.name)
+
+        return Submission.objects.filter(group__contestuser__user=self.request.user).prefetch_related(
+            'castle',
+            'castle__question',
+        ).order_by("created")
+
+    def list(self, request, *args, **kwargs):
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(self.get_queryset(), request, view=self)
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        return Response(paginator.get_paginated_response(serializer.data).data)
+
+
+class SubmissionItemView(GenericViewSet):
+    http_method_names = ['get']
+    permission_classes = (IsAuthenticatedContest,)
+    serializer_class = SubmissionItemSerializer
+    queryset = SubmissionItem.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        id: str = self.request.query_params.get('id', None)
+        if id is None or not id.isnumeric():
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        submission = Submission.objects.filter(id=int(id), group__contestuser__user=self.request.user)
+        if not submission.exists():
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        serializer = self.get_serializer(SubmissionItem.objects.filter(submission=submission.first()), many=True)
         return Response(serializer.data)

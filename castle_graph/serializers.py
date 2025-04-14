@@ -2,7 +2,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from rest_framework import serializers, exceptions
 from rest_framework.validators import UniqueValidator
-from castle_graph.models import Invite, ContestUser, ContestGroup, Submission, CaptureCastle, Gif, Castle
+
+from castle_graph.models import Invite, ContestUser, ContestGroup, Submission, CaptureCastle, Gif, Castle, \
+    SubmissionItem
 from question.models import Question
 from user.models import User
 
@@ -133,6 +135,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Castle Conqueror')
         return attrs
 
+
 class GifSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gif
@@ -143,16 +146,47 @@ class GifSerializer(serializers.ModelSerializer):
         validated_data["user"] = self.context["request"].user
         return super().create(validated_data)
 
+
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = '__all__'
 
+
 class CastleSerializer(serializers.ModelSerializer):
     question = serializers.SerializerMethodField()
+
     class Meta:
         model = Castle
         fields = "__all__"
 
     def get_question(self, obj):
         return QuestionSerializer(Question.objects.filter(castle=obj).first()).data
+
+
+class SubmissionListSerializer(serializers.ModelSerializer):
+    question = serializers.SerializerMethodField()
+    completion = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = ['id', 'castle', 'created', 'question', 'completion']
+
+    def get_question(self, obj: Submission):
+        return {
+            'id': obj.castle.question.id,
+            'name': obj.castle.question.name
+        }
+
+    def get_completion(self, obj: Submission):
+        q = SubmissionItem.objects.filter(submission=obj)
+        if q.count() == 0:
+            return 0.0
+        return q.filter(result=SubmissionItem.SubmissionResult.ACCEPTED).count()/q.count()
+
+
+
+class SubmissionItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubmissionItem
+        fields = ['id', 'result']
