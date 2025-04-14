@@ -2,13 +2,14 @@ import threading
 import requests
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from graph_conqueror.pagination import PageNumberPagination
 from django.core.mail import EmailMessage
 from rest_framework.viewsets import ViewSet, GenericViewSet
@@ -16,7 +17,7 @@ from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Submission, Gif
 from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
-from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, GifSerializer
+from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, GifSerializer, LeaderboardSerializer
 from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import get_object_or_404
 
@@ -250,4 +251,15 @@ class GifViewSet(GenericViewSet):
         instance.save()
 
         serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+class LeaderBoardApiView(APIView):
+    def get(self, request, *args, **kwargs):
+        leaderboard = (
+            CaptureCastle.objects.filter(is_valid=True)
+            .values("group__id", "group__name")
+            .annotate(score=Sum("castle__score"))
+            .order_by("-score")
+        )
+        serializer = LeaderboardSerializer(leaderboard, many=True)
         return Response(serializer.data)

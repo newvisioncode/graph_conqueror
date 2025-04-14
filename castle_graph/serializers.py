@@ -141,3 +141,9 @@ class GifSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
         return super().create(validated_data)
+
+
+class LeaderboardSerializer(serializers.Serializer):
+    group_id = serializers.IntegerField(source='group__id')
+    group_name = serializers.CharField(source='group__name')
+    score = serializers.IntegerField()
