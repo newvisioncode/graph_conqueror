@@ -1,24 +1,27 @@
 import threading
+
 import requests
 from django.conf import settings
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import EmailMessage
 from django.db import transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
-from graph_conqueror.pagination import PageNumberPagination
-from django.core.mail import EmailMessage
 from rest_framework.viewsets import ViewSet, GenericViewSet
 from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Submission, Gif
+
+from graph_conqueror.pagination import PageNumberPagination
+from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Gif
 from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
-from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, GifSerializer
-from django.contrib.sites.shortcuts import get_current_site
-from django.shortcuts import get_object_or_404
+from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, \
+    GifSerializer, CastleSerializer
 
 
 class InviteView(ViewSet):
@@ -211,6 +214,7 @@ class SubmissionView(ViewSet):
             self.__solved_check(submission_item.submission)
         return Response(status=status.HTTP_200_OK)
 
+
 class GifViewSet(GenericViewSet):
     http_method_names = ['post', 'get', 'patch']
     permission_classes = (IsAuthenticatedContest,)
@@ -250,4 +254,15 @@ class GifViewSet(GenericViewSet):
         instance.save()
 
         serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+class CastleView(GenericViewSet):
+    http_method_names = ['post', 'get', 'patch']
+    serializer_class = CastleSerializer
+    permission_classes = (AllowAny,)
+    queryset = Castle.objects.all().order_by("-id")
+
+    def list(self, request, *args, **kwargs):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
