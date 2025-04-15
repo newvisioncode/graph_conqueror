@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework import generics, permissions, status, exceptions
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
+from graph_conqueror.token import RefreshToken
 from .serializers import SignupSerializer, LoginSerializer
 
 User = get_user_model()
