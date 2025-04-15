@@ -57,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "graph_conqueror.middleware.GetContestUserMiddleware",
 ]
 
 ROOT_URLCONF = 'graph_conqueror.urls'
