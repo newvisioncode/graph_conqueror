@@ -112,6 +112,26 @@ class AuthViewSet(ViewSet):
             'payment_id': contest_user.payment_identifier
         }, status=status.HTTP_201_CREATED)
 
+    @action(methods=['post'], url_path="payment-identifier", detail=False, permission_classes=(AllowAny,))
+    def get_payment_identifier(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user: User = authenticate(username=serializer.data['username'], password=serializer.data['password'])
+        if user is None:
+            return Response({
+                'error': 'wrong username or password',
+            }, status=status.HTTP_403_FORBIDDEN)
+        contest_user = ContestUser.objects.get(user=user)
+        if contest_user.is_active:
+            return Response({
+                'message': 'Your payment was successful'
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'payment_identifier': contest_user.payment_identifier
+        }, status=status.HTTP_200_OK)
+
 
 class GroupViewSet(ViewSet):
     http_method_names = ['post']
