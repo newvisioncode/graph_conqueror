@@ -23,7 +23,7 @@ from user.serializers import LoginSerializer
 from .models import Invite, ContestUser, SubmissionItem, CaptureCastle, Castle, Gif, Submission, User
 from .permissions import IsAuthenticatedContest, ConfirmJudge0SubmissionPermission
 from .serializers import InviteSerializer, RegisterContestUserSerializer, ContestGroupSerializer, SubmissionSerializer, \
-    GifSerializer, CastleSerializer
+    GifSerializer, CastleSerializer, SubmissionItemSerializer, SubmissionListSerializer
 
 
 class InviteView(ViewSet):
@@ -269,3 +269,29 @@ class CastleView(GenericViewSet):
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
+
+class SubmissionListView(GenericViewSet):
+    http_method_names = ['get']
+    permission_classes = (IsAuthenticatedContest,)
+    serializer_class = SubmissionListSerializer
+    pagination_class = PageNumberPagination
+
+    def get_queryset(self):
+        return Submission.objects.filter(group__contestuser__user=self.request.user).prefetch_related(
+            'castle',
+            'castle__question',
+        ).order_by("created")
+
+    def list(self, request, *args, **kwargs):
+        paginator = self.pagination_class()
+        paginated_queryset = paginator.paginate_queryset(self.get_queryset(), request, view=self)
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        return Response(paginator.get_paginated_response(serializer.data).data)
+
+    @action(methods=['get'], detail=True, url_path="items")
+    def get_items(self, request, *args, **kwargs):
+        submission = Submission.objects.filter(id=int(kwargs['pk']), group__contestuser__user=request.user)
+        if not submission.exists():
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        serializer = SubmissionItemSerializer(SubmissionItem.objects.filter(submission=submission.first()), many=True)
+        return Response(serializer.data)
