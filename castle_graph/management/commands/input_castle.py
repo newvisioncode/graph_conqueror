@@ -59,6 +59,8 @@ class Command(BaseCommand):
                                           score=len(i['Neighbors']),
                                           identifier=random.randint(0, 100000000),
                                           neighbors=[],
+                                          x=i['X'],
+                                          y=i['Y'],
                                           question=questions[len(i['Neighbors']) - QUESTION_NEIGHBOR_OFFSET].pop(0)),
                     i
                 )

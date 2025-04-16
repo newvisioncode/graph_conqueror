@@ -27,6 +27,8 @@ class Castle(models.Model):
     question = models.OneToOneField(Question, on_delete=models.CASCADE)
     score = models.IntegerField(blank=False, null=False)
     neighbors = ArrayField(models.IntegerField(blank=False, null=False), blank=False, null=False)
+    x = models.IntegerField(blank=False, null=False)
+    y = models.IntegerField(blank=False, null=False)
 
 
 class SubmissionLanguage(models.Model):
