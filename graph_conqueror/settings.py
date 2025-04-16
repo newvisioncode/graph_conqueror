@@ -29,6 +29,7 @@ CORS_ORIGIN_ALLOW_ALL = config('CORS_ORIGIN_ALLOW_ALL', default=True, cast=bool)
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -79,6 +80,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'graph_conqueror.wsgi.application'
 
+ASGI_APPLICATION = "graph_conqueror.asgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 #
@@ -152,3 +154,13 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS')
 
 JUDGE0_HOST = config('JUDGE0_HOST')
 JUDGE0_KEY = config('JUDGE0_KEY')
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(config('REDIS_HOST'), config('REDIS_PORT'))],
+        },
+    },
+}

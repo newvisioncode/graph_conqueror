@@ -1,5 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
+
+from castle_graph import consumers
 from castle_graph.views import InviteView, AuthViewSet, GroupViewSet, SubmissionView, GifViewSet, LeaderBoardApiView
 
 app_name = 'castle_graph'
@@ -12,3 +14,7 @@ url.register('submission', SubmissionView, basename='submission')
 url.register('gif', GifViewSet, basename='gif')
 
 urlpatterns = [path("leaderboard/", LeaderBoardApiView.as_view())] + url.get_urls()
+
+websocket_urlpatterns = [
+    path("ws/", consumers.ChatConsumer.as_asgi()),
+]
