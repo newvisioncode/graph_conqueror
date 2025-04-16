@@ -10,5 +10,6 @@ url.register('auth', AuthViewSet, basename='auth')
 url.register('group', GroupViewSet, basename='group')
 url.register('submission', SubmissionView, basename='submission')
 url.register('gif', GifViewSet, basename='gif')
+url.register('castles', CastleView, basename='castles')
 
 urlpatterns = [] + url.get_urls()
